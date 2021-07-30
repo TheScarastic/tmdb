@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/movies_fragment">
+
+    <fragment
+        android:id="@+id/movies_fragment"
+        android:name="com.abhishek.tmdb.MovieFragment"
+        android:label="MoviesFragment"
+        tools:layout="@layout/fragment_common">
+        <action
+            android:id="@+id/action_movies_fragment_to_advanced_fragment"
+            app:destination="@id/advanced_fragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/shows_fragment"
+        android:name="com.abhishek.tmdb.ShowsFragment"
+        android:label="ShowsFragment"
+        tools:layout="@layout/fragment_common">
+        <action
+            android:id="@+id/action_shows_fragment_to_advanced_fragment"
+            app:destination="@id/advanced_fragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/advanced_fragment"
+        android:name="com.abhishek.tmdb.AdvancedFragment"
+        android:label="AdvancedFragment"
+        tools:layout="@layout/fragment_advanced" />
+</navigation>
