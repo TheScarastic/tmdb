@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Tmdb</string>
+    <string name="movies_title">MOVIES</string>
+    <string name="shows_title">SHOWS</string>
+    <string name="search_title">SEARCH</string>
+    <string name="top_rated_title">TOP RATED</string>
+    <string name="popular_title">POPULAR</string>
+    <string name="rating">Rating:&#160;</string>
+    <string name="rating_title">RATING</string>
+    <string name="year">YEAR</string>
+    <string name="region">REGION</string>
+    <string name="runtime">RUNTIME</string>
+    <string name="screenshot">SCREENSHOT</string>
+</resources>
