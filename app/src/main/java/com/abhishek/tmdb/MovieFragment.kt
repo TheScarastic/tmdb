@@ -74,9 +74,10 @@ class MovieFragment : Fragment() {
                 RecyclerItemClickListener.OnItemClickListener {
                 override fun onItemClick(view: View?, position: Int) {
                     if (view != null) {
-                        navigate(view,position, mTopMoviesDb)
+                        navigate(view, position, mTopMoviesDb)
                     }
                 }
+
                 override fun onLongItemClick(view: View?, position: Int) {
                 }
             }
@@ -87,9 +88,10 @@ class MovieFragment : Fragment() {
                 RecyclerItemClickListener.OnItemClickListener {
                 override fun onItemClick(view: View?, position: Int) {
                     if (view != null) {
-                        navigate(view,position, mPopularMoviesDb)
+                        navigate(view, position, mPopularMoviesDb)
                     }
                 }
+
                 override fun onLongItemClick(view: View?, position: Int) {
                 }
             }
@@ -119,9 +121,9 @@ class MovieFragment : Fragment() {
 
         mPoster!!.setOnClickListener {
             if (mPosterTop) {
-                navigate(view,mRandom, mTopMoviesDb)
+                navigate(view, mRandom, mTopMoviesDb)
             } else {
-                navigate(view,mRandom, mPopularMoviesDb)
+                navigate(view, mRandom, mPopularMoviesDb)
             }
         }
 
@@ -156,6 +158,7 @@ class MovieFragment : Fragment() {
 
         override fun doInBackground(vararg p: Int?): String? {
             val tmdbApi = TmdbApi(BuildConfig.API_KEY)
+
             if (p[0] != 0) {
                 topMoviePage = tmdbApi.movies.getTopRatedMovies("en", p[0])
                 mTopPage++

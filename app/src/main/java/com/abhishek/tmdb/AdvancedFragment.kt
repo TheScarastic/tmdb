@@ -59,8 +59,8 @@ class AdvancedFragment : Fragment() {
             summmary.text = tvDatabase.overview
             rating.text = tvDatabase.voteAverage.toString()
             posterPath = tvDatabase.posterPath
-            // region.text = tvDatabase?.originalLanguage.uppercase(Locale.getDefault())
-            // year.text = (tvDatabase?.releaseDate).split("-")[0]
+            region.text = tvDatabase.originCountry[0].uppercase(Locale.getDefault())
+             year.text = (tvDatabase.firstAirDate).split("-")[0]
         }
 
         poster.let {
