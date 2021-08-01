@@ -1,7 +1,9 @@
 package com.abhishek.tmdb
 
-import android.annotation.SuppressLint
-import android.os.*
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.Message
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,10 +16,13 @@ import com.bumptech.glide.Glide
 import info.movito.themoviedbapi.TmdbApi
 import info.movito.themoviedbapi.model.MovieDb
 import info.movito.themoviedbapi.model.core.MovieResultsPage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 
-class MovieFragment : Fragment() {
+class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.IO) {
 
     private var mTopMoviesDb = ArrayList<MovieDb>()
     private var mPopularMoviesDb = ArrayList<MovieDb>()
@@ -35,7 +40,10 @@ class MovieFragment : Fragment() {
 
     private var mHandler: Handler? = null
 
-    private val UPDATE_POSTER = 1000
+    companion object {
+        lateinit var tmdbApi: TmdbApi
+        const val UPDATE_POSTER = 1000
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -50,6 +58,8 @@ class MovieFragment : Fragment() {
     private fun init(view: View) {
         val recyclerViewTop: RecyclerView = view.findViewById(R.id.recyclerview_top)
         val recyclerViewPopular: RecyclerView = view.findViewById(R.id.recyclerview_popular)
+
+
 
         mPoster = view.findViewById(R.id.poster) as ImageView
 
@@ -74,7 +84,7 @@ class MovieFragment : Fragment() {
                 RecyclerItemClickListener.OnItemClickListener {
                 override fun onItemClick(view: View?, position: Int) {
                     if (view != null) {
-                        navigate(view, position, mTopMoviesDb)
+                        navigate(view, mTopMoviesDb[position])
                     }
                 }
 
@@ -88,7 +98,7 @@ class MovieFragment : Fragment() {
                 RecyclerItemClickListener.OnItemClickListener {
                 override fun onItemClick(view: View?, position: Int) {
                     if (view != null) {
-                        navigate(view, position, mPopularMoviesDb)
+                        navigate(view, mPopularMoviesDb[position])
                     }
                 }
 
@@ -102,8 +112,7 @@ class MovieFragment : Fragment() {
                 val totalCount = layoutManagerTop.itemCount
                 val lastVisiblePos = layoutManagerTop.findFirstVisibleItemPosition() + 5
                 if (lastVisiblePos >= totalCount) {
-                    GetApi().execute(mTopPage, 0)
-                    mTopPage++
+                    fetchMovies(mTopPage, 0)
                 }
             }
         })
@@ -113,21 +122,23 @@ class MovieFragment : Fragment() {
                 val totalCount = layoutManagerPopular.itemCount
                 val lastVisiblePos = layoutManagerPopular.findFirstVisibleItemPosition() + 5
                 if (lastVisiblePos >= totalCount) {
-                    GetApi().execute(0, mPopularPage)
-                    mPopularPage++
+                    fetchMovies(0, mPopularPage)
                 }
             }
         })
 
         mPoster!!.setOnClickListener {
             if (mPosterTop) {
-                navigate(view, mRandom, mTopMoviesDb)
+                navigate(view, mTopMoviesDb[mRandom])
             } else {
-                navigate(view, mRandom, mPopularMoviesDb)
+                navigate(view, mPopularMoviesDb[mRandom])
             }
         }
 
-        GetApi().execute(mTopPage, mPopularPage)
+        launch {
+            tmdbApi = TmdbApi(BuildConfig.API_KEY)
+            fetchMovies(mTopPage, mPopularPage)
+        }
 
         mHandler = object : Handler(Looper.getMainLooper()) {
             override fun handleMessage(msg: Message) {
@@ -139,64 +150,61 @@ class MovieFragment : Fragment() {
         }
     }
 
-    fun navigate(view: View, position: Int, db: ArrayList<MovieDb>) {
+    fun fetchMovies(topPage: Int, popularPage: Int) {
+        var dbSize: Int
+        var topMoviePage: MovieResultsPage? = null
+        var popularMoviePage: MovieResultsPage? = null
+
+        launch {
+            if (topPage != 0) {
+                topMoviePage = tmdbApi.movies.getTopRatedMovies("en", topPage)
+                mTopPage++
+            }
+
+            if (popularPage != 0) {
+                popularMoviePage = tmdbApi.movies.getPopularMovies("en", popularPage)
+                mPopularPage++
+            }
+
+            launch(Dispatchers.Main) {
+                if (topMoviePage != null) {
+                    dbSize = mTopMoviesDb.size
+                    for (item: MovieDb in topMoviePage!!.results) {
+                        mTopMoviesDb.add(item)
+                        dbSize++
+                        mTmdbTopMoviesAdapter?.notifyItemInserted(dbSize)
+                    }
+                }
+
+                if (popularMoviePage != null) {
+                    dbSize = mPopularMoviesDb.size
+                    for (item: MovieDb in popularMoviePage!!.results) {
+                        mPopularMoviesDb.add(item)
+                        dbSize++
+                        mTmdbPopularMoviesAdapter?.notifyItemInserted(dbSize)
+
+                    }
+                }
+                if (!mHandler!!.hasMessages(UPDATE_POSTER)) {
+                    setPoster()
+                }
+            }
+        }
+
+
+    }
+
+
+    fun navigate(view: View, db: MovieDb) {
         val args = Bundle()
         args.putBoolean(AdvancedFragment.IS_MOVIE, true)
-        args.putSerializable(AdvancedFragment.MOVIES_DB, db[position])
+        args.putSerializable(AdvancedFragment.MOVIES_DB, db)
         Navigation.findNavController(view).navigate(R.id.advanced_fragment, args)
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         reset()
-    }
-
-    @SuppressLint("StaticFieldLeak")
-    inner class GetApi : AsyncTask<Int, Void, String>() {
-        private var topMoviePage: MovieResultsPage? = null
-        private var popularMoviePage: MovieResultsPage? = null
-
-        override fun doInBackground(vararg p: Int?): String? {
-            val tmdbApi = TmdbApi(BuildConfig.API_KEY)
-
-            if (p[0] != 0) {
-                topMoviePage = tmdbApi.movies.getTopRatedMovies("en", p[0])
-                mTopPage++
-            }
-
-            if (p[1] != 0) {
-                popularMoviePage = tmdbApi.movies.getPopularMovies("en", p[1])
-                mPopularPage++
-            }
-            return null
-        }
-
-        override fun onPostExecute(result: String?) {
-            super.onPostExecute(result)
-            var dbSize = 0
-            if (topMoviePage != null) {
-                dbSize = mTopMoviesDb.size
-                for (item: MovieDb in topMoviePage!!.results) {
-                    mTopMoviesDb.add(item)
-                    dbSize++
-                    mTmdbTopMoviesAdapter?.notifyItemInserted(dbSize)
-                }
-
-            }
-
-            if (popularMoviePage != null) {
-                dbSize = mPopularMoviesDb.size
-                for (item: MovieDb in popularMoviePage!!.results) {
-                    mPopularMoviesDb.add(item)
-                    dbSize++
-                    mTmdbPopularMoviesAdapter?.notifyItemInserted(dbSize)
-
-                }
-            }
-            if (!mHandler!!.hasMessages(UPDATE_POSTER)) {
-                setPoster()
-            }
-        }
     }
 
     fun setPoster() {
@@ -217,7 +225,7 @@ class MovieFragment : Fragment() {
                 .override(1600, 800)
                 .into(it)
 
-            mHandler?.sendEmptyMessageDelayed(UPDATE_POSTER, 5000)
+            mHandler?.sendEmptyMessageDelayed(Companion.UPDATE_POSTER, 5000)
         }
     }
 

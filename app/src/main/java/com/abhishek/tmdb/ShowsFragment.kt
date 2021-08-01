@@ -1,7 +1,9 @@
 package com.abhishek.tmdb
 
-import android.annotation.SuppressLint
-import android.os.*
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.Message
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,13 +13,14 @@ import androidx.navigation.Navigation
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import info.movito.themoviedbapi.TmdbApi
 import info.movito.themoviedbapi.TvResultsPage
-import info.movito.themoviedbapi.model.MovieDb
 import info.movito.themoviedbapi.model.tv.TvSeries
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlin.random.Random
 
-class ShowsFragment : Fragment() {
+class ShowsFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.IO) {
 
     private var mTopTvDb = ArrayList<TvSeries>()
     private var mPopularTvDb = ArrayList<TvSeries>()
@@ -35,7 +38,6 @@ class ShowsFragment : Fragment() {
 
     private var mHandler: Handler? = null
 
-    private val UPDATE_POSTER = 1000
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -74,7 +76,7 @@ class ShowsFragment : Fragment() {
                 RecyclerItemClickListener.OnItemClickListener {
                 override fun onItemClick(view: View?, position: Int) {
                     if (view != null) {
-                        navigate(view, position, mTopTvDb)
+                        navigate(view, mTopTvDb[position])
                     }
                 }
 
@@ -88,7 +90,7 @@ class ShowsFragment : Fragment() {
                 RecyclerItemClickListener.OnItemClickListener {
                 override fun onItemClick(view: View?, position: Int) {
                     if (view != null) {
-                        navigate(view, position, mPopularTvDb)
+                        navigate(view, mPopularTvDb[position])
                     }
                 }
 
@@ -102,8 +104,7 @@ class ShowsFragment : Fragment() {
                 val totalCount = layoutManagerTop.itemCount
                 val lastVisiblePos = layoutManagerTop.findFirstVisibleItemPosition() + 5
                 if (lastVisiblePos >= totalCount) {
-                    GetApi().execute(mTopPage, 0)
-                    mTopPage++
+                    fetchShows(mTopPage, 0)
                 }
             }
         })
@@ -113,36 +114,35 @@ class ShowsFragment : Fragment() {
                 val totalCount = layoutManagerPopular.itemCount
                 val lastVisiblePos = layoutManagerPopular.findFirstVisibleItemPosition() + 5
                 if (lastVisiblePos >= totalCount) {
-                    GetApi().execute(0, mPopularPage)
-                    mPopularPage++
+                    fetchShows(0, mPopularPage)
                 }
             }
         })
 
         mPoster!!.setOnClickListener {
             if (mPosterTop) {
-                navigate(view,mRandom, mTopTvDb)
+                navigate(view, mTopTvDb[mRandom])
             } else {
-                navigate(view,mRandom, mPopularTvDb)
+                navigate(view, mPopularTvDb[mRandom])
             }
         }
 
-        GetApi().execute(mTopPage, mPopularPage)
+        fetchShows(mTopPage, mPopularPage)
 
         mHandler = object : Handler(Looper.getMainLooper()) {
             override fun handleMessage(msg: Message) {
                 super.handleMessage(msg)
                 when (msg.what) {
-                    UPDATE_POSTER -> setPoster()
+                    MovieFragment.UPDATE_POSTER -> setPoster()
                 }
             }
         }
     }
 
-    fun navigate(view: View, position: Int, db: ArrayList<TvSeries>) {
+    fun navigate(view: View, db: TvSeries) {
         val args = Bundle()
         args.putBoolean(AdvancedFragment.IS_MOVIE, false)
-        args.putSerializable(AdvancedFragment.TV_DB, db[position])
+        args.putSerializable(AdvancedFragment.TV_DB, db)
         Navigation.findNavController(view).navigate(R.id.advanced_fragment, args)
     }
 
@@ -151,48 +151,44 @@ class ShowsFragment : Fragment() {
         reset()
     }
 
-    @SuppressLint("StaticFieldLeak")
-    inner class GetApi : AsyncTask<Int, Void, String>() {
-        private var topTvPage: TvResultsPage? = null
-        private var popularTvPage: TvResultsPage? = null
+    fun fetchShows(topPage: Int, popularPage: Int) {
+        var dbSize: Int
+        var topTvPage: TvResultsPage? = null
+        var popularTvPage: TvResultsPage? = null
 
-        override fun doInBackground(vararg p: Int?): String? {
-            val tmdbApi = TmdbApi(BuildConfig.API_KEY)
-            if (p[0] != 0) {
-                topTvPage = tmdbApi.tvSeries.getTopRated("en", p[0])
+        launch {
+            if (topPage != 0) {
+                topTvPage = MovieFragment.tmdbApi.tvSeries.getTopRated("en", topPage)
                 mTopPage++
             }
 
-            if (p[1] != 0) {
-                popularTvPage = tmdbApi.tvSeries.getPopular("en", p[1])
+            if (popularPage != 0) {
+                popularTvPage = MovieFragment.tmdbApi.tvSeries.getPopular("en", popularPage)
                 mPopularPage++
             }
-            return null
-        }
 
-        override fun onPostExecute(result: String?) {
-            super.onPostExecute(result)
-            var dbSize = 0
-            if (topTvPage != null) {
-                dbSize = mTopTvDb.size
-                for (item: TvSeries in topTvPage!!.results) {
-                    mTopTvDb.add(item)
-                    dbSize++
-                    mTmdbTopTvAdapter?.notifyItemInserted(dbSize)
-                }
-            }
-
-            if (popularTvPage != null) {
-                dbSize = mPopularTvDb.size
-                for (item: TvSeries in popularTvPage!!.results) {
-                    mPopularTvDb.add(item)
-                    dbSize++
-                    mTmdbPopularTvAdapter?.notifyItemInserted(dbSize)
+            launch(Dispatchers.Main) {
+                if (topTvPage != null) {
+                    dbSize = mTopTvDb.size
+                    for (item: TvSeries in topTvPage!!.results) {
+                        mTopTvDb.add(item)
+                        dbSize++
+                        mTmdbTopTvAdapter?.notifyItemInserted(dbSize)
+                    }
                 }
 
-            }
-            if (!mHandler!!.hasMessages(UPDATE_POSTER)) {
-                setPoster()
+                if (popularTvPage != null) {
+                    dbSize = mPopularTvDb.size
+                    for (item: TvSeries in popularTvPage!!.results) {
+                        mPopularTvDb.add(item)
+                        dbSize++
+                        mTmdbPopularTvAdapter?.notifyItemInserted(dbSize)
+                    }
+
+                }
+                if (!mHandler!!.hasMessages(MovieFragment.UPDATE_POSTER)) {
+                    setPoster()
+                }
             }
         }
     }
@@ -215,7 +211,7 @@ class ShowsFragment : Fragment() {
                 .override(1600, 800)
                 .into(it)
 
-            mHandler?.sendEmptyMessageDelayed(UPDATE_POSTER, 5000)
+            mHandler?.sendEmptyMessageDelayed(MovieFragment.UPDATE_POSTER, 5000)
         }
     }
 

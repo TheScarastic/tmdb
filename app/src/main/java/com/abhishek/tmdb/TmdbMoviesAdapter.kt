@@ -20,6 +20,7 @@ class TmdbMoviesAdapter(private var movieDb: ArrayList<MovieDb>, context: Contex
         private var rating: TextView = view.findViewById(R.id.rating)
         private val ratingText: String? = mContext?.getString(R.string.rating)
 
+
         fun load(movieDb: MovieDb) {
             title.text = movieDb.title
             rating.text = (ratingText + movieDb.voteAverage.toString())
