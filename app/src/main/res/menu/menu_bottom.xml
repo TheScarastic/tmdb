@@ -2,16 +2,16 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/movies_fragment"
-        android:icon="@drawable/ic_launcher_foreground"
+        android:icon="@drawable/ic_movie"
         android:title="@string/movies_title" />
 
     <item
         android:id="@+id/shows_fragment"
-        android:icon="@drawable/ic_launcher_foreground"
+        android:icon="@drawable/ic_tv_shows"
         android:title="@string/shows_title" />
 
     <item
         android:id="@+id/search"
-        android:icon="@drawable/ic_launcher_foreground"
+        android:icon="@android:drawable/ic_menu_search"
         android:title="@string/search_title" />
 </menu>

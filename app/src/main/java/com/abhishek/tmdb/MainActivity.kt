@@ -1,6 +1,9 @@
 package com.abhishek.tmdb
 
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.os.Bundle
+import android.view.ViewGroup
 import android.widget.PopupMenu
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.NavController
@@ -21,6 +24,34 @@ class MainActivity : AppCompatActivity() {
         bottomBar = findViewById(R.id.bottomBar)
 
         setupSmoothBottomMenu()
+        setupbottomMargin()
+
+    }
+
+    private fun setupbottomMargin() {
+        val param = bottomBar.layoutParams as ViewGroup.MarginLayoutParams
+        val resources: Resources = resources
+        val navHeight: Int = resources.getIdentifier(
+            "navigation_bar_height", "dimen",
+            "android"
+        )
+        val gestureMode =
+            resources.getIdentifier(
+                "config_navBarInteractionMode", "integer",
+                "android"
+            )
+
+        if (navHeight > 0 && resources.getInteger(gestureMode) != 2) {
+            param.setMargins(
+                0, 0, 0, resources.getDimensionPixelSize(navHeight)
+            )
+            bottomBar.layoutParams = param
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        setupbottomMargin()
 
     }
 
