@@ -11,10 +11,10 @@ import com.bumptech.glide.Glide
 import info.movito.themoviedbapi.model.tv.TvSeries
 
 class TmdbTvAdapter(private var tvDb: ArrayList<TvSeries>, context: Context?) :
-    RecyclerView.Adapter<TmdbTvAdapter.MyviewHolder>() {
+    RecyclerView.Adapter<TmdbTvAdapter.TvHolder>() {
     val mContext = context
 
-    inner class MyviewHolder(view: View) : RecyclerView.ViewHolder(view) {
+    inner class TvHolder(view: View) : RecyclerView.ViewHolder(view) {
         private var thumbnail: ImageView = view.findViewById(R.id.thumbnail)
         private var title: TextView = view.findViewById(R.id.title)
         private var rating: TextView = view.findViewById(R.id.rating)
@@ -25,13 +25,14 @@ class TmdbTvAdapter(private var tvDb: ArrayList<TvSeries>, context: Context?) :
             rating.text = (ratingText + tvDb.voteAverage.toString())
             Glide.with(itemView)
                 .load("https://www.themoviedb.org/t/p/w600_and_h900_bestv2" + tvDb.posterPath)
-                .override(500, 500)
+                .placeholder(R.drawable.ic_broken_image)
+                .override(450, 500)
                 .into(thumbnail)
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TmdbTvAdapter.MyviewHolder {
-        return MyviewHolder(
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TmdbTvAdapter.TvHolder {
+        return TvHolder(
             LayoutInflater.from(parent.context).inflate(
                 R.layout.tmdb_item, parent,
                 false
@@ -43,7 +44,7 @@ class TmdbTvAdapter(private var tvDb: ArrayList<TvSeries>, context: Context?) :
         return tvDb.size
     }
 
-    override fun onBindViewHolder(holder: MyviewHolder, position: Int) {
+    override fun onBindViewHolder(holder: TvHolder, position: Int) {
         holder.load(tvDb[position])
     }
 }

@@ -11,7 +11,7 @@
         android:title="@string/shows_title" />
 
     <item
-        android:id="@+id/search"
+        android:id="@+id/search_fragment"
         android:icon="@android:drawable/ic_menu_search"
         android:title="@string/search_title" />
 </menu>

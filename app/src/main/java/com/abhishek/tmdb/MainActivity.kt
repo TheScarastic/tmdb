@@ -24,11 +24,11 @@ class MainActivity : AppCompatActivity() {
         bottomBar = findViewById(R.id.bottomBar)
 
         setupSmoothBottomMenu()
-        setupbottomMargin()
+        setupBottomMargin()
 
     }
 
-    private fun setupbottomMargin() {
+    private fun setupBottomMargin() {
         val param = bottomBar.layoutParams as ViewGroup.MarginLayoutParams
         val resources: Resources = resources
         val navHeight: Int = resources.getIdentifier(
@@ -51,7 +51,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        setupbottomMargin()
+        setupBottomMargin()
 
     }
 

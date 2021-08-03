@@ -13,7 +13,6 @@ import androidx.navigation.Navigation
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import info.movito.themoviedbapi.TvResultsPage
 import info.movito.themoviedbapi.model.tv.TvSeries
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,8 +24,8 @@ class ShowsFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
     private var mTopTvDb = ArrayList<TvSeries>()
     private var mPopularTvDb = ArrayList<TvSeries>()
 
-    private var mTmdbTopTvAdapter: TmdbTvAdapter? = null
-    private var mTmdbPopularTvAdapter: TmdbTvAdapter? = null
+    private lateinit var mTmdbTopTvAdapter: TmdbTvAdapter
+    private lateinit var mTmdbPopularTvAdapter: TmdbTvAdapter
 
     private var mTopPage = 1
     private var mPopularPage = 1
@@ -34,9 +33,9 @@ class ShowsFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
     private var mRandom = 0
     private var mPosterTop = false
 
-    private var mPoster: ImageView? = null
+    private lateinit var mPoster: ImageView
 
-    private var mHandler: Handler? = null
+    private var mHandler: Handler = Handler(Looper.getMainLooper())
 
 
     override fun onCreateView(
@@ -119,7 +118,7 @@ class ShowsFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
             }
         })
 
-        mPoster!!.setOnClickListener {
+        mPoster.setOnClickListener {
             if (mPosterTop) {
                 navigate(view, mTopTvDb[mRandom])
             } else {
@@ -152,43 +151,33 @@ class ShowsFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
     }
 
     fun fetchShows(topPage: Int, popularPage: Int) {
-        var dbSize: Int
-        var topTvPage: TvResultsPage? = null
-        var popularTvPage: TvResultsPage? = null
+        var topTvPage: List<TvSeries> = listOf(TvSeries())
+        var popularTvPage: List<TvSeries> = listOf(TvSeries())
 
-        launch {
-            if (topPage != 0) {
-                topTvPage = MovieFragment.tmdbApi.tvSeries.getTopRated("en", topPage)
-                mTopPage++
+        if (topPage != 0) {
+            topTvPage = MovieFragment.tmdbApi.tvSeries.getTopRated("en", topPage).results
+            mTopPage++
+        }
+
+        if (popularPage != 0) {
+            popularTvPage = MovieFragment.tmdbApi.tvSeries.getPopular("en", popularPage).results
+            mPopularPage++
+        }
+
+        launch(Dispatchers.Main) {
+            for (item: TvSeries in topTvPage) {
+                mTopTvDb.add(item)
+                mTmdbTopTvAdapter.notifyItemInserted(mTopTvDb.size)
             }
 
-            if (popularPage != 0) {
-                popularTvPage = MovieFragment.tmdbApi.tvSeries.getPopular("en", popularPage)
-                mPopularPage++
+            for (item: TvSeries in popularTvPage) {
+                mPopularTvDb.add(item)
+                mTmdbPopularTvAdapter.notifyItemInserted(mPopularTvDb.size)
             }
 
-            launch(Dispatchers.Main) {
-                if (topTvPage != null) {
-                    dbSize = mTopTvDb.size
-                    for (item: TvSeries in topTvPage!!.results) {
-                        mTopTvDb.add(item)
-                        dbSize++
-                        mTmdbTopTvAdapter?.notifyItemInserted(dbSize)
-                    }
-                }
 
-                if (popularTvPage != null) {
-                    dbSize = mPopularTvDb.size
-                    for (item: TvSeries in popularTvPage!!.results) {
-                        mPopularTvDb.add(item)
-                        dbSize++
-                        mTmdbPopularTvAdapter?.notifyItemInserted(dbSize)
-                    }
-
-                }
-                if (!mHandler!!.hasMessages(MovieFragment.UPDATE_POSTER)) {
-                    setPoster()
-                }
+            if (!mHandler.hasMessages(MovieFragment.UPDATE_POSTER)) {
+                setPoster()
             }
         }
     }
@@ -205,24 +194,23 @@ class ShowsFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
                 mPopularTvDb[mRandom].posterPath
             }
 
-        mPoster?.let {
-            Glide.with(this)
-                .load("https://www.themoviedb.org/t/p/w600_and_h900_bestv2$posterPath")
-                .override(1600, 800)
-                .into(it)
+        Glide.with(this)
+            .load("https://www.themoviedb.org/t/p/w600_and_h900_bestv2$posterPath")
+            .placeholder(R.drawable.ic_broken_image)
+            .into(mPoster)
 
-            mHandler?.sendEmptyMessageDelayed(MovieFragment.UPDATE_POSTER, 5000)
-        }
+        mHandler.sendEmptyMessageDelayed(MovieFragment.UPDATE_POSTER, 5000)
     }
+
 
     private fun reset() {
         mTopTvDb.clear()
         mPopularTvDb.clear()
         mTopPage = 1
         mPopularPage = 1
-        mTmdbTopTvAdapter?.notifyDataSetChanged()
-        mTmdbPopularTvAdapter?.notifyDataSetChanged()
-        mHandler?.removeCallbacksAndMessages(null)
+        mTmdbTopTvAdapter.notifyDataSetChanged()
+        mTmdbPopularTvAdapter.notifyDataSetChanged()
+        mHandler.removeCallbacksAndMessages(null)
     }
 
 }

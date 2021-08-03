@@ -15,7 +15,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import info.movito.themoviedbapi.TmdbApi
 import info.movito.themoviedbapi.model.MovieDb
-import info.movito.themoviedbapi.model.core.MovieResultsPage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,8 +26,8 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
     private var mTopMoviesDb = ArrayList<MovieDb>()
     private var mPopularMoviesDb = ArrayList<MovieDb>()
 
-    private var mTmdbTopMoviesAdapter: TmdbMoviesAdapter? = null
-    private var mTmdbPopularMoviesAdapter: TmdbMoviesAdapter? = null
+    private lateinit var mTmdbTopMoviesAdapter: TmdbMoviesAdapter
+    private lateinit var mTmdbPopularMoviesAdapter: TmdbMoviesAdapter
 
     private var mTopPage = 1
     private var mPopularPage = 1
@@ -36,12 +35,13 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
     private var mRandom = 0
     private var mPosterTop = false
 
-    private var mPoster: ImageView? = null
+    private lateinit var mPoster: ImageView
 
-    private var mHandler: Handler? = null
+    private var mHandler: Handler = Handler(Looper.getMainLooper())
 
     companion object {
         lateinit var tmdbApi: TmdbApi
+        fun tmdbInitialized() = ::tmdbApi.isInitialized
         const val UPDATE_POSTER = 1000
     }
 
@@ -58,8 +58,6 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
     private fun init(view: View) {
         val recyclerViewTop: RecyclerView = view.findViewById(R.id.recyclerview_top)
         val recyclerViewPopular: RecyclerView = view.findViewById(R.id.recyclerview_popular)
-
-
 
         mPoster = view.findViewById(R.id.poster) as ImageView
 
@@ -127,7 +125,7 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
             }
         })
 
-        mPoster!!.setOnClickListener {
+        mPoster.setOnClickListener {
             if (mPosterTop) {
                 navigate(view, mTopMoviesDb[mRandom])
             } else {
@@ -136,7 +134,11 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
         }
 
         launch {
-            tmdbApi = TmdbApi(BuildConfig.API_KEY)
+            try {
+                tmdbApi = TmdbApi(BuildConfig.API_KEY)
+            } catch (e: Exception) {
+
+            }
             fetchMovies(mTopPage, mPopularPage)
         }
 
@@ -151,49 +153,37 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
     }
 
     fun fetchMovies(topPage: Int, popularPage: Int) {
-        var dbSize: Int
-        var topMoviePage: MovieResultsPage? = null
-        var popularMoviePage: MovieResultsPage? = null
+        var topMoviePage: List<MovieDb> = listOf(MovieDb())
+        var popularMoviePage: List<MovieDb> = listOf(MovieDb())
 
-        launch {
-            if (topPage != 0) {
-                topMoviePage = tmdbApi.movies.getTopRatedMovies("en", topPage)
-                mTopPage++
+        if (topPage != 0) {
+            topMoviePage = tmdbApi.movies.getTopRatedMovies("en", topPage).results
+            mTopPage++
+        }
+
+        if (popularPage != 0) {
+            popularMoviePage = tmdbApi.movies.getPopularMovies("en", popularPage).results
+            mPopularPage++
+        }
+
+        launch(Dispatchers.Main) {
+            for (item: MovieDb in topMoviePage) {
+                mTopMoviesDb.add(item)
+                mTmdbTopMoviesAdapter.notifyItemInserted(mTopMoviesDb.size)
             }
 
-            if (popularPage != 0) {
-                popularMoviePage = tmdbApi.movies.getPopularMovies("en", popularPage)
-                mPopularPage++
+
+            for (item: MovieDb in popularMoviePage) {
+                mPopularMoviesDb.add(item)
+                mTmdbPopularMoviesAdapter.notifyItemInserted(mPopularMoviesDb.size)
             }
 
-            launch(Dispatchers.Main) {
-                if (topMoviePage != null) {
-                    dbSize = mTopMoviesDb.size
-                    for (item: MovieDb in topMoviePage!!.results) {
-                        mTopMoviesDb.add(item)
-                        dbSize++
-                        mTmdbTopMoviesAdapter?.notifyItemInserted(dbSize)
-                    }
-                }
-
-                if (popularMoviePage != null) {
-                    dbSize = mPopularMoviesDb.size
-                    for (item: MovieDb in popularMoviePage!!.results) {
-                        mPopularMoviesDb.add(item)
-                        dbSize++
-                        mTmdbPopularMoviesAdapter?.notifyItemInserted(dbSize)
-
-                    }
-                }
-                if (!mHandler!!.hasMessages(UPDATE_POSTER)) {
-                    setPoster()
-                }
+            if (!mHandler.hasMessages(UPDATE_POSTER)) {
+                setPoster()
             }
         }
 
-
     }
-
 
     fun navigate(view: View, db: MovieDb) {
         val args = Bundle()
@@ -219,14 +209,12 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
                 mPopularMoviesDb[mRandom].posterPath
             }
 
-        mPoster?.let {
-            Glide.with(this)
-                .load("https://www.themoviedb.org/t/p/w600_and_h900_bestv2$posterPath")
-                .override(1600, 800)
-                .into(it)
+        Glide.with(this)
+            .load("https://www.themoviedb.org/t/p/w600_and_h900_bestv2$posterPath")
+            .placeholder(R.drawable.ic_broken_image)
+            .into(mPoster)
 
-            mHandler?.sendEmptyMessageDelayed(Companion.UPDATE_POSTER, 5000)
-        }
+        mHandler.sendEmptyMessageDelayed(UPDATE_POSTER, 5000)
     }
 
     private fun reset() {
@@ -234,8 +222,8 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
         mPopularMoviesDb.clear()
         mTopPage = 1
         mPopularPage = 1
-        mTmdbTopMoviesAdapter?.notifyDataSetChanged()
-        mTmdbTopMoviesAdapter?.notifyDataSetChanged()
-        mHandler?.removeCallbacksAndMessages(null)
+        mTmdbTopMoviesAdapter.notifyDataSetChanged()
+        mTmdbTopMoviesAdapter.notifyDataSetChanged()
+        mHandler.removeCallbacksAndMessages(null)
     }
 }

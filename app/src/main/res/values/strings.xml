@@ -11,4 +11,6 @@
     <string name="region">REGION</string>
     <string name="runtime">RUNTIME</string>
     <string name="screenshot">SCREENSHOT</string>
+    <string name="search_movie">Movie</string>
+    <string name="search_show">Show</string>
 </resources>

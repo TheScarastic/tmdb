@@ -30,4 +30,14 @@
         android:name="com.abhishek.tmdb.AdvancedFragment"
         android:label="AdvancedFragment"
         tools:layout="@layout/fragment_advanced" />
+
+    <fragment
+        android:id="@+id/search_fragment"
+        android:name="com.abhishek.tmdb.SearchFragment"
+        android:label="SearchFragment"
+        tools:layout="@layout/fragment_search">
+        <action
+            android:id="@+id/action_placeholder_to_advanced_fragment"
+            app:destination="@id/advanced_fragment" />
+    </fragment>
 </navigation>

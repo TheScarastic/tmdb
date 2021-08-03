@@ -26,7 +26,8 @@ class AdvancedFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatcher
         const val IS_MOVIE = "ISMOVIE"
     }
 
-    private var mScreenshotAdapter: ScreenshotAdapater? = null
+    private lateinit var mScreenshotAdapter: ScreenshotAdapter
+    private var mArtwork = arrayListOf<Artwork>()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -43,25 +44,29 @@ class AdvancedFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatcher
         val isMovie = args?.getBoolean(IS_MOVIE) as Boolean
 
         val recyclerView: RecyclerView = view.findViewById(R.id.rv_screenshot)
-        val layoutMananager = LinearLayoutManager(
+        val layoutManager = LinearLayoutManager(
             context, LinearLayoutManager.HORIZONTAL, false
         )
 
         val poster: ImageView = view.findViewById(R.id.poster)
         val title: TextView = view.findViewById(R.id.title)
-        val summmary: TextView = view.findViewById(R.id.summary)
+        val summary: TextView = view.findViewById(R.id.summary)
 
         val year: TextView = view.findViewById(R.id.year_text)
         val region: TextView = view.findViewById(R.id.region_text)
         val rating: TextView = view.findViewById(R.id.rating_text)
         val posterPath: String?
 
+        mScreenshotAdapter = ScreenshotAdapter(context, mArtwork)
+        recyclerView.layoutManager = layoutManager
+        recyclerView.adapter = mScreenshotAdapter
+
         val id: Int
         if (isMovie) {
             val movieDatabase = args.getSerializable(MOVIES_DB) as MovieDb
             id = movieDatabase.id
             title.text = movieDatabase.title
-            summmary.text = movieDatabase.overview
+            summary.text = movieDatabase.overview
             rating.text = movieDatabase.voteAverage.toString()
             region.text = movieDatabase.originalLanguage.uppercase(Locale.getDefault())
             year.text = movieDatabase.releaseDate.split("-")[0]
@@ -71,38 +76,32 @@ class AdvancedFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatcher
             val tvDatabase: TvSeries = args.getSerializable(TV_DB) as TvSeries
             id = tvDatabase.id
             title.text = tvDatabase.name
-            summmary.text = tvDatabase.overview
+            summary.text = tvDatabase.overview
             rating.text = tvDatabase.voteAverage.toString()
             posterPath = tvDatabase.posterPath
             region.text = tvDatabase.originCountry[0].uppercase(Locale.getDefault())
             year.text = (tvDatabase.firstAirDate).split("-")[0]
         }
-        poster.let {
-            Glide.with(this)
-                .load("https://www.themoviedb.org/t/p/w600_and_h900_bestv2$posterPath")
-                .override(1600, 800)
-                .into(it)
-        }
+
+        Glide.with(this)
+            .load("https://www.themoviedb.org/t/p/w600_and_h900_bestv2$posterPath")
+            .override(1600, 800)
+            .into(poster)
 
         launch {
-            val artwork: List<Artwork>
-            if (isMovie) {
-                artwork = MovieFragment.tmdbApi.movies.getImages(id, null).backdrops
+            val artwork: List<Artwork> = if (isMovie) {
+                MovieFragment.tmdbApi.movies.getImages(id, null).backdrops
             } else {
-                artwork = MovieFragment.tmdbApi.tvSeries.getImages(id, null).backdrops
+                MovieFragment.tmdbApi.tvSeries.getImages(id, null).backdrops
             }
 
             launch(Dispatchers.Main) {
-                val backdropPath = arrayListOf<String>()
                 for (art: Artwork in artwork) {
-                    backdropPath.add(art.filePath)
-                }
-                mScreenshotAdapter = ScreenshotAdapater(context, backdropPath)
+                    mArtwork.add(art)
+                    mScreenshotAdapter.notifyItemInserted(mArtwork.size)
 
-                recyclerView.layoutManager = layoutMananager
-                recyclerView.adapter = mScreenshotAdapter
+                }
             }
         }
-
     }
 }
