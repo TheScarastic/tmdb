@@ -2,42 +2,36 @@ package com.abhishek.tmdb
 
 import android.content.Context
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.abhishek.tmdb.databinding.TmdbItemBinding
 import com.bumptech.glide.Glide
 import info.movito.themoviedbapi.model.tv.TvSeries
 
-class TmdbTvAdapter(private var tvDb: ArrayList<TvSeries>, context: Context?) :
+class TmdbTvAdapter(private var tvDb: ArrayList<TvSeries>, context: Context) :
     RecyclerView.Adapter<TmdbTvAdapter.TvHolder>() {
-    val mContext = context
+    private val mContext = context
 
-    inner class TvHolder(view: View) : RecyclerView.ViewHolder(view) {
-        private var thumbnail: ImageView = view.findViewById(R.id.thumbnail)
-        private var title: TextView = view.findViewById(R.id.title)
-        private var rating: TextView = view.findViewById(R.id.rating)
-        private val ratingText: String? = mContext?.getString(R.string.rating)
+    class TvHolder(private val binding: TmdbItemBinding, context: Context) :
+        RecyclerView.ViewHolder(binding.root) {
+
+        private val ratingText: String = context.getString(R.string.rating)
 
         fun load(tvDb: TvSeries) {
-            title.text = tvDb.name
-            rating.text = (ratingText + tvDb.voteAverage.toString())
+            binding.title.text = tvDb.name
+            binding.rating.text = (ratingText + tvDb.voteAverage.toString())
             Glide.with(itemView)
                 .load("https://www.themoviedb.org/t/p/w600_and_h900_bestv2" + tvDb.posterPath)
                 .placeholder(R.drawable.ic_broken_image)
                 .override(450, 500)
-                .into(thumbnail)
+                .into(binding.thumbnail)
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TmdbTvAdapter.TvHolder {
-        return TvHolder(
-            LayoutInflater.from(parent.context).inflate(
-                R.layout.tmdb_item, parent,
-                false
-            )
-        )
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TvHolder {
+        val inflater = LayoutInflater.from(parent.context)
+        val binding = TmdbItemBinding.inflate(inflater, parent, false)
+        return TvHolder(binding, mContext)
     }
 
     override fun getItemCount(): Int {

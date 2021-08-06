@@ -8,20 +8,21 @@ import android.widget.PopupMenu
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
-import me.ibrahimsn.lib.SmoothBottomBar
+import com.abhishek.tmdb.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var navController: NavController
-    private lateinit var bottomBar: SmoothBottomBar
+
+    private val binding by viewBinding(ActivityMainBinding::inflate)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(binding.root)
+
         val navHostFragment =
             supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         navController = navHostFragment.navController
-        bottomBar = findViewById(R.id.bottomBar)
 
         setupSmoothBottomMenu()
         setupBottomMargin()
@@ -29,7 +30,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupBottomMargin() {
-        val param = bottomBar.layoutParams as ViewGroup.MarginLayoutParams
+        val param = binding.bottomBar.layoutParams as ViewGroup.MarginLayoutParams
         val resources: Resources = resources
         val navHeight: Int = resources.getIdentifier(
             "navigation_bar_height", "dimen",
@@ -45,7 +46,7 @@ class MainActivity : AppCompatActivity() {
             param.setMargins(
                 0, 0, 0, resources.getDimensionPixelSize(navHeight)
             )
-            bottomBar.layoutParams = param
+            binding.bottomBar.layoutParams = param
         }
     }
 
@@ -59,6 +60,6 @@ class MainActivity : AppCompatActivity() {
         val popupMenu = PopupMenu(this, null)
         popupMenu.inflate(R.menu.menu_bottom)
         val menu = popupMenu.menu
-        bottomBar.setupWithNavController(menu, navController)
+        binding.bottomBar.setupWithNavController(menu, navController)
     }
 }

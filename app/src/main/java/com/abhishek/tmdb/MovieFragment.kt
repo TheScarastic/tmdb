@@ -4,14 +4,12 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
-import android.widget.ImageView
 import androidx.fragment.app.Fragment
 import androidx.navigation.Navigation
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.abhishek.tmdb.databinding.FragmentCommonBinding
 import com.bumptech.glide.Glide
 import info.movito.themoviedbapi.TmdbApi
 import info.movito.themoviedbapi.model.MovieDb
@@ -21,13 +19,12 @@ import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 
-class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.IO) {
+class MovieFragment : Fragment(R.layout.fragment_common),
+    CoroutineScope by CoroutineScope(Dispatchers.IO) {
+    private val binding by viewBinding(FragmentCommonBinding::bind)
 
     private var mTopMoviesDb = ArrayList<MovieDb>()
     private var mPopularMoviesDb = ArrayList<MovieDb>()
-
-    private lateinit var mTmdbTopMoviesAdapter: TmdbMoviesAdapter
-    private lateinit var mTmdbPopularMoviesAdapter: TmdbMoviesAdapter
 
     private var mTopPage = 1
     private var mPopularPage = 1
@@ -35,32 +32,19 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
     private var mRandom = 0
     private var mPosterTop = false
 
-    private lateinit var mPoster: ImageView
-
     private var mHandler: Handler = Handler(Looper.getMainLooper())
 
     companion object {
         lateinit var tmdbApi: TmdbApi
-        fun tmdbInitialized() = ::tmdbApi.isInitialized
         const val UPDATE_POSTER = 1000
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        val view: View = inflater.inflate(R.layout.fragment_common, container, false)
-        init(view)
-        return view
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        init()
+        super.onViewCreated(view, savedInstanceState)
     }
 
-    private fun init(view: View) {
-        val recyclerViewTop: RecyclerView = view.findViewById(R.id.recyclerview_top)
-        val recyclerViewPopular: RecyclerView = view.findViewById(R.id.recyclerview_popular)
-
-        mPoster = view.findViewById(R.id.poster) as ImageView
-
+    private fun init() {
         val layoutManagerTop = LinearLayoutManager(
             context, LinearLayoutManager.HORIZONTAL, false
         )
@@ -68,17 +52,14 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
             context, LinearLayoutManager.HORIZONTAL, false
         )
 
-        mTmdbTopMoviesAdapter = TmdbMoviesAdapter(mTopMoviesDb, context)
-        mTmdbPopularMoviesAdapter = TmdbMoviesAdapter(mPopularMoviesDb, context)
+        binding.recyclerviewTop.layoutManager = layoutManagerTop
+        binding.recyclerviewPopular.layoutManager = layoutManagerPopular
 
-        recyclerViewTop.layoutManager = layoutManagerTop
-        recyclerViewPopular.layoutManager = layoutManagerPopular
+        binding.recyclerviewTop.adapter = TmdbMoviesAdapter(mTopMoviesDb, requireContext())
+        binding.recyclerviewPopular.adapter = TmdbMoviesAdapter(mPopularMoviesDb, requireContext())
 
-        recyclerViewTop.adapter = mTmdbTopMoviesAdapter
-        recyclerViewPopular.adapter = mTmdbPopularMoviesAdapter
-
-        recyclerViewTop.addOnItemTouchListener(RecyclerItemClickListener(
-            context, recyclerViewTop, object :
+        binding.recyclerviewTop.addOnItemTouchListener(RecyclerItemClickListener(
+            context, binding.recyclerviewTop, object :
                 RecyclerItemClickListener.OnItemClickListener {
                 override fun onItemClick(view: View?, position: Int) {
                     if (view != null) {
@@ -91,8 +72,8 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
             }
         ))
 
-        recyclerViewPopular.addOnItemTouchListener(RecyclerItemClickListener(
-            context, recyclerViewTop, object :
+        binding.recyclerviewPopular.addOnItemTouchListener(RecyclerItemClickListener(
+            context, binding.recyclerviewPopular, object :
                 RecyclerItemClickListener.OnItemClickListener {
                 override fun onItemClick(view: View?, position: Int) {
                     if (view != null) {
@@ -105,7 +86,7 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
             }
         ))
 
-        recyclerViewTop.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+        binding.recyclerviewTop.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                 val totalCount = layoutManagerTop.itemCount
                 val lastVisiblePos = layoutManagerTop.findFirstVisibleItemPosition() + 5
@@ -115,7 +96,7 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
             }
         })
 
-        recyclerViewPopular.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+        binding.recyclerviewPopular.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                 val totalCount = layoutManagerPopular.itemCount
                 val lastVisiblePos = layoutManagerPopular.findFirstVisibleItemPosition() + 5
@@ -125,20 +106,16 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
             }
         })
 
-        mPoster.setOnClickListener {
+        binding.poster.setOnClickListener {
             if (mPosterTop) {
-                navigate(view, mTopMoviesDb[mRandom])
+                navigate(it, mTopMoviesDb[mRandom])
             } else {
-                navigate(view, mPopularMoviesDb[mRandom])
+                navigate(it, mPopularMoviesDb[mRandom])
             }
         }
 
         launch {
-            try {
-                tmdbApi = TmdbApi(BuildConfig.API_KEY)
-            } catch (e: Exception) {
-
-            }
+            tmdbApi = TmdbApi(BuildConfig.API_KEY)
             fetchMovies(mTopPage, mPopularPage)
         }
 
@@ -153,36 +130,37 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
     }
 
     fun fetchMovies(topPage: Int, popularPage: Int) {
-        var topMoviePage: List<MovieDb> = listOf(MovieDb())
-        var popularMoviePage: List<MovieDb> = listOf(MovieDb())
+        launch {
+            var topMoviePage: List<MovieDb> = listOf(MovieDb())
+            var popularMoviePage: List<MovieDb> = listOf(MovieDb())
 
-        if (topPage != 0) {
-            topMoviePage = tmdbApi.movies.getTopRatedMovies("en", topPage).results
-            mTopPage++
-        }
-
-        if (popularPage != 0) {
-            popularMoviePage = tmdbApi.movies.getPopularMovies("en", popularPage).results
-            mPopularPage++
-        }
-
-        launch(Dispatchers.Main) {
-            for (item: MovieDb in topMoviePage) {
-                mTopMoviesDb.add(item)
-                mTmdbTopMoviesAdapter.notifyItemInserted(mTopMoviesDb.size)
+            if (topPage != 0) {
+                topMoviePage = tmdbApi.movies.getTopRatedMovies("en", topPage).results
+                mTopPage++
             }
 
-
-            for (item: MovieDb in popularMoviePage) {
-                mPopularMoviesDb.add(item)
-                mTmdbPopularMoviesAdapter.notifyItemInserted(mPopularMoviesDb.size)
+            if (popularPage != 0) {
+                popularMoviePage = tmdbApi.movies.getPopularMovies("en", popularPage).results
+                mPopularPage++
             }
 
-            if (!mHandler.hasMessages(UPDATE_POSTER)) {
-                setPoster()
+            launch(Dispatchers.Main) {
+                for (item: MovieDb in topMoviePage) {
+                    mTopMoviesDb.add(item)
+                    binding.recyclerviewTop.adapter?.notifyItemInserted(mTopMoviesDb.size)
+                }
+
+
+                for (item: MovieDb in popularMoviePage) {
+                    mPopularMoviesDb.add(item)
+                    binding.recyclerviewPopular.adapter?.notifyItemInserted(mPopularMoviesDb.size)
+                }
+
+                if (!mHandler.hasMessages(UPDATE_POSTER)) {
+                    setPoster()
+                }
             }
         }
-
     }
 
     fun navigate(view: View, db: MovieDb) {
@@ -194,7 +172,7 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
 
     override fun onDestroyView() {
         super.onDestroyView()
-        reset()
+        mHandler.removeCallbacksAndMessages(null)
     }
 
     fun setPoster() {
@@ -212,18 +190,8 @@ class MovieFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.I
         Glide.with(this)
             .load("https://www.themoviedb.org/t/p/w600_and_h900_bestv2$posterPath")
             .placeholder(R.drawable.ic_broken_image)
-            .into(mPoster)
+            .into(binding.poster)
 
         mHandler.sendEmptyMessageDelayed(UPDATE_POSTER, 5000)
-    }
-
-    private fun reset() {
-        mTopMoviesDb.clear()
-        mPopularMoviesDb.clear()
-        mTopPage = 1
-        mPopularPage = 1
-        mTmdbTopMoviesAdapter.notifyDataSetChanged()
-        mTmdbTopMoviesAdapter.notifyDataSetChanged()
-        mHandler.removeCallbacksAndMessages(null)
     }
 }

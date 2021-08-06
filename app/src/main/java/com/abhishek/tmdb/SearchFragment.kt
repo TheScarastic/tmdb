@@ -1,14 +1,12 @@
 package com.abhishek.tmdb
 
 import android.os.Bundle
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.navigation.Navigation
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import com.abhishek.tmdb.databinding.FragmentSearchBinding
 import info.movito.themoviedbapi.model.MovieDb
 import info.movito.themoviedbapi.model.Multi
 import info.movito.themoviedbapi.model.tv.TvSeries
@@ -16,63 +14,41 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class SearchFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.IO) {
+class SearchFragment : Fragment(R.layout.fragment_search),
+    CoroutineScope by CoroutineScope(Dispatchers.IO) {
+    private val binding by viewBinding(FragmentSearchBinding::bind)
+    private val mSearchList = ArrayList<Multi>()
+    private var query = ""
 
-    private lateinit var mSearchAdapter: SearchAdapter
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        val view: View = inflater.inflate(R.layout.fragment_search, container, false)
-        init(view)
-        return view
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        init()
+        super.onViewCreated(view, savedInstanceState)
     }
 
-    private fun init(view: View) {
-        val searchbar: SearchView = view.findViewById(R.id.searchbar)
-        val recyclerView: RecyclerView = view.findViewById(R.id.rv_search)
+    private fun init() {
         val layoutManager = LinearLayoutManager(context)
-        val mSearchList = ArrayList<Multi>()
 
-        mSearchAdapter = SearchAdapter(context, mSearchList)
-        recyclerView.layoutManager = layoutManager
-        recyclerView.adapter = mSearchAdapter
+        binding.rvSearch.layoutManager = layoutManager
+        binding.rvSearch.adapter = SearchAdapter(requireContext(), mSearchList)
 
-        searchbar.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+        binding.searchbar.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String): Boolean {
                 return false
             }
 
             override fun onQueryTextChange(s: String): Boolean {
-                if (s.isBlank()) return false
-                launch {
-                    val results =
-                        MovieFragment.tmdbApi.search.searchMulti(
-                            s, null, null
-                        ).results
-
-
-                    launch(Dispatchers.Main) {
-                        mSearchList.clear()
-                        mSearchAdapter.notifyDataSetChanged()
-                        for (result: Multi in results) {
-                            mSearchList.add(result)
-                            mSearchAdapter.notifyItemInserted(mSearchList.size)
-                        }
-                    }
-                }
-                return true
+                search(s)
+                return false
             }
         })
 
-        recyclerView.addOnItemTouchListener(RecyclerItemClickListener(
-            context, recyclerView, object :
+        binding.rvSearch.addOnItemTouchListener(RecyclerItemClickListener(
+            context, binding.rvSearch, object :
                 RecyclerItemClickListener.OnItemClickListener {
                 override fun onItemClick(view: View?, position: Int) {
                     if (view != null) {
-                        navigate(view, mSearchList.get(position))
+                        navigate(view, mSearchList[position])
                     }
                 }
 
@@ -80,18 +56,51 @@ class SearchFragment : Fragment(), CoroutineScope by CoroutineScope(Dispatchers.
                 }
             }
         ))
+
+        if (query.isEmpty()) search()
+    }
+
+    fun search(s: String = "") {
+        mSearchList.clear()
+        binding.rvSearch.adapter?.notifyDataSetChanged()
+
+        query = if (s.isEmpty()) {
+            "a"
+        } else {
+            s
+        }
+        launch {
+            val results =
+                MovieFragment.tmdbApi.search.searchMulti(
+                    query, "", 0
+                ).results
+
+            launch(Dispatchers.Main) {
+                for (result: Multi in results) {
+                    if (result.mediaType == Multi.MediaType.PERSON) {
+                        continue
+                    }
+                    mSearchList.add(result)
+                    binding.rvSearch.adapter?.notifyItemInserted(mSearchList.size)
+                }
+            }
+        }
     }
 
     fun navigate(view: View, db: Multi) {
         val args = Bundle()
-        if (db.mediaType == Multi.MediaType.MOVIE) {
-            args.putBoolean(AdvancedFragment.IS_MOVIE, true)
-            args.putSerializable(AdvancedFragment.MOVIES_DB, (db as MovieDb))
-        } else if (db.mediaType == Multi.MediaType.TV_SERIES) {
-            args.putBoolean(AdvancedFragment.IS_MOVIE, false)
-            args.putSerializable(AdvancedFragment.TV_DB, (db as TvSeries))
-        } else {
-            return
+        when (db.mediaType) {
+            Multi.MediaType.MOVIE -> {
+                args.putBoolean(AdvancedFragment.IS_MOVIE, true)
+                args.putSerializable(AdvancedFragment.MOVIES_DB, (db as MovieDb))
+            }
+            Multi.MediaType.TV_SERIES -> {
+                args.putBoolean(AdvancedFragment.IS_MOVIE, false)
+                args.putSerializable(AdvancedFragment.TV_DB, (db as TvSeries))
+            }
+            else -> {
+                return
+            }
         }
         Navigation.findNavController(view).navigate(R.id.advanced_fragment, args)
     }
